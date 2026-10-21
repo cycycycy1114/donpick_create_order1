@@ -142,8 +142,6 @@
     // 1. 載入商品資料
     async function loadProducts() {
       const select = document.getElementById('productSelect');
-      if (!select) return;
-
       try {
         const res = await fetch('/api/get-products');
         productList = await res.json();
@@ -170,7 +168,6 @@
     function onProductChange() {
       const idx = document.getElementById('productSelect').value;
       const specSelect = document.getElementById('specSelect');
-      if (!specSelect) return;
       
       specSelect.innerHTML = '';
 
@@ -209,12 +206,12 @@
       }
     }
 
-    // 確保頁面 DOM 完全載入完成後才執行腳本
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById('productSelect').addEventListener('change', onProductChange);
-      document.getElementById('quantity').addEventListener('input', updatePrice);
-      loadProducts();
-    });
+    // 綁定事件
+    document.getElementById('productSelect').addEventListener('change', onProductChange);
+    document.getElementById('quantity').addEventListener('input', updatePrice);
+
+    // 立即執行載入
+    loadProducts();
 
     // 4. 表單提交寫入 Notion B 資料庫
     document.getElementById('orderForm').addEventListener('submit', async (e) => {
@@ -253,3 +250,23 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
+
+        if (res.ok) {
+          msg.style.color = 'green';
+          msg.innerText = '✅ 下單成功！已收到您的預購訂單。';
+          document.getElementById('orderForm').reset();
+          updatePrice();
+        } else {
+          const errData = await res.json();
+          throw new Error(errData.error || '下單失敗');
+        }
+      } catch (err) {
+        msg.style.color = 'red';
+        msg.innerText = '❌ ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
