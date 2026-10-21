@@ -5,23 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>預購下單表單</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #f7f6f3; color: #37352f; }
-    .card { background: white; padding: 24px; border-radius: 8px; max-width: 420px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    h2 { margin-top: 0; font-size: 20px; text-align: center; color: #2eaadc; }
-    label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: 14px; }
-    input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-    .price-info { background: #f0f7ff; padding: 10px; border-radius: 6px; margin: 12px 0; font-size: 14px; color: #0066cc; }
-    button { width: 100%; padding: 12px; background: #2eaadc; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    #msg { margin-top: 12px; text-align: center; font-weight: bold; font-size: 14px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 20px;
+      background: #f7f6f3;
+      color: #37352f;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 440px;
+      margin: 20px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+      text-align: center;
+      color: #2eaadc;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+      background: #fff;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #2eaadc;
+    }
+    .contact-group {
+      display: flex;
+      gap: 8px;
+    }
+    .price-info {
+      background: #eef7fc;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 18px 0;
+      font-size: 14px;
+      color: #0066cc;
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #2eaadc;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2589b2;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #msg {
+      margin-top: 14px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h2>🛍️ 線上下單預購表單</h2>
     <form id="orderForm">
-      <label>LINE / 買家暱稱</label>
-      <input type="text" id="nickname" required placeholder="例如：cy">
+      
+      <label>買家暱稱</label>
+      <input type="text" id="nickname" required placeholder="例如：小明">
+
+      <label>聯絡方式</label>
+      <div class="contact-group">
+        <select id="contactType" style="width: 35%;">
+          <option value="LINE ID">LINE ID</option>
+          <option value="IG 帳號">IG 帳號</option>
+        </select>
+        <input type="text" id="contactInfo" required placeholder="請輸入 ID 或帳號" style="width: 65%;">
+      </div>
 
       <label>選擇商品</label>
       <select id="productSelect" required>
@@ -33,7 +115,6 @@
         <option value="預設規格">預設規格</option>
         <option value="單品">單品</option>
         <option value="組合包">組合包</option>
-        <!-- 您可依需求自由增減或修飾規格項目 -->
       </select>
 
       <label>數量</label>
@@ -48,7 +129,8 @@
       </select>
 
       <div class="price-info">
-        單價：\$<span id="unitPrice">0</span> | 總金額：\$<span id="totalPrice">0</span>
+        <span>單價：\$<span id="unitPrice">0</span></span>
+        <span>總金額：\$<span id="totalPrice">0</span></span>
       </div>
 
       <button type="submit" id="btn">送出訂單</button>
@@ -59,16 +141,22 @@
   <script>
     let productList = [];
 
-    // 載入商品資料庫 (A 資料庫)
+    // 1. 從 A 資料庫讀取商品清單
     async function loadProducts() {
       try {
         const res = await fetch('/api/get-products');
         productList = await res.json();
         const select = document.getElementById('productSelect');
+        
+        if (!Array.isArray(productList) || productList.length === 0) {
+          select.innerHTML = '<option value="">目前無可選擇的商品</option>';
+          return;
+        }
+
         select.innerHTML = '<option value="">請選擇商品...</option>';
         productList.forEach((p, idx) => {
           const opt = document.createElement('option');
-          opt.value = idx; // 用索引值對應商品物件
+          opt.value = idx;
           opt.textContent = `${p.name} ($${p.price})`;
           select.appendChild(opt);
         });
@@ -77,10 +165,11 @@
       }
     }
 
-    // 計算價格邏輯
+    // 2. 自動即時計算價格
     function updatePrice() {
       const idx = document.getElementById('productSelect').value;
       const qty = parseInt(document.getElementById('quantity').value) || 1;
+      
       if (idx !== "" && productList[idx]) {
         const price = productList[idx].price || 0;
         document.getElementById('unitPrice').innerText = price;
@@ -96,51 +185,17 @@
 
     loadProducts();
 
-    // 提交訂單
+    // 3. 提交表單寫入 B 資料庫
     document.getElementById('orderForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('btn');
       const msg = document.getElementById('msg');
       const idx = document.getElementById('productSelect').value;
-      if (idx === "") return;
+      
+      if (idx === "") {
+        alert("請選擇商品！");
+        return;
+      }
 
       const selectedProduct = productList[idx];
       const qty = parseInt(document.getElementById('quantity').value);
-
-      btn.disabled = true;
-      msg.innerText = '處理中...';
-
-      const data = {
-        nickname: document.getElementById('nickname').value,
-        product: selectedProduct.name,
-        price: selectedProduct.price,
-        quantity: qty,
-        totalPrice: selectedProduct.price * qty,
-        spec: document.getElementById('specSelect').value,
-        delivery: document.getElementById('deliverySelect').value
-      };
-
-      try {
-        const res = await fetch('/api/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        if (res.ok) {
-          msg.style.color = 'green';
-          msg.innerText = '✅ 下單成功！';
-          document.getElementById('orderForm').reset();
-          updatePrice();
-        } else {
-          throw new Error('下單失敗');
-        }
-      } catch (err) {
-        msg.style.color = 'red';
-        msg.innerText = '❌ ' + err.message;
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  </script>
-</body>
-</html>
