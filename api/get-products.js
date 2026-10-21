@@ -1,44 +1,39 @@
 const { Client } = require('@notionhq/client');
+const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
 module.exports = async (req, res) => {
   try {
-    const token = process.env.NOTION_TOKEN;
-    const dbId = process.env.PRODUCT_DB_ID;
-
-    // 檢查環境變數
-    if (!token || !dbId) {
-      return res.status(200).json({
-        status: "Error",
-        message: "環境變數缺少！",
-        hasToken: !!token,
-        hasProductDbId: !!dbId
-      });
+    if (!process.env.PRODUCT_DB_ID) {
+      throw new Error("缺少 PRODUCT_DB_ID 環境變數");
     }
 
-    const notion = new Client({ auth: token });
-    
-    // 查詢 Notion A 資料庫
     const response = await notion.databases.query({
-      database_id: dbId,
+      database_id: process.env.PRODUCT_DB_ID,
     });
 
-    // 將 Notion 回傳的原始欄位結構印出來
-    const debugInfo = response.results.map(page => ({
-      pageId: page.id,
-      propertyKeys: Object.keys(page.properties), // 資料庫裡的所有欄位名稱
-      propertiesRaw: page.properties              // 原始屬性資料
-    }));
+    const products = response.results.map(page => {
+      const props = page.properties;
 
-    res.status(200).json({
-      status: "Success",
-      totalCount: response.results.length, // 抓到的筆數
-      data: debugInfo
+      // 1. 抓取商品名稱
+      const name = props['商品名稱']?.title[0]?.plain_text || '未命名商品';
+
+      // 2. 抓取價格
+      const price = props['價格']?.number || 0;
+
+      // 3. 抓取規格選項
+      let specs = [];
+      if (props['規格']?.multi_select?.length > 0) {
+        specs = props['規格'].multi_select.map(s => s.name);
+      } else {
+        specs = ['預設規格'];
+      }
+
+      return { id: page.id, name, price, specs };
     });
 
+    res.status(200).json(products);
   } catch (error) {
-    res.status(500).json({
-      status: "API Error",
-      errorMessage: error.message
-    });
+    console.error("GET Products 錯誤:", error.message);
+    res.status(500).json({ error: error.message });
   }
 };
