@@ -251,11 +251,34 @@
           body: JSON.stringify(data)
         });
 
-        if (res.ok) {
-          msg.style.color = 'green';
-          msg.innerText = '✅ 下單成功！已收到您的預購訂單。';
+if (res.ok) {
+          // 清空表單
           document.getElementById('orderForm').reset();
-          updatePrice();
+          if (typeof updatePrice === 'function') {
+            updatePrice();
+          }
+
+          // 顯示完整且精美的成功畫面與 LINE 引導
+          msg.style.color = '#333'; // 恢復正常文字顏色讓區塊排版更好看
+          msg.innerHTML = `
+            <div style="text-align: center; padding: 15px; line-height: 1.6; background: #fdfdfd; border: 2px dashed #4CAF50; border-radius: 10px; margin-top: 15px;">
+              <h3 style="color: #2e7d32; margin-top: 0;">🎉 預購下單成功！感謝您的訂購！</h3>
+              <p style="font-size: 15px; font-weight: bold; color: #d32f2f;">📸 【請先將此畫面「截圖」保存】</p>
+              <p style="font-size: 14px;">請點擊下方連結私訊我們的 LINE 官方帳號，將截圖傳給我們，並發送您的 <strong>「LINE 社群暱稱」</strong>！</p>
+              <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+              <div style="text-align: left; background: #f9f9f9; padding: 12px; border-radius: 6px; font-size: 13px; color: #555;">
+                💡 <strong>溫馨提醒：</strong><br>
+                1. 若需付款訂金，請於 <strong>24小時內</strong> 私訊官方 LINE，以取得匯款帳號與金額。<br>
+                2. 等我們確認採買成功後，會第一時間在 LINE 私訊您匯款帳號與金額（尾款）；若不幸缺貨/斷貨，也會私訊通知您喔！
+              </div>
+              <br>
+              <p style="margin-bottom: 5px;">💬 <strong>【如何與我們保持聯繫？】</strong></p>
+              <p style="margin: 5px 0;">🔗 點擊加入 LINE 官方帳號：<br>
+              <a href="https://lin.ee/9RRJHKL" target="_blank" style="color: #06c755; font-weight: bold; font-size: 16px; text-decoration: none;">👉 https://lin.ee/9RRJHKL</a></p>
+              <p style="margin-top: 5px;">🔍 或使用 LINE 搜尋 ID 加好友：<br>
+              <strong style="color: #333; font-size: 15px;">@122dbekb</strong>（記得要加 @ 符號喔！）</p>
+            </div>
+          `;
         } else {
           const errData = await res.json();
           throw new Error(errData.error || '下單失敗');
