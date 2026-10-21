@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
       );
       const price = pricePropKey ? page.properties[pricePropKey].number : 0;
 
-      // 3. 讀取 A 資料庫的「規格」欄位 (支援 Select 或 Multi-select)
+      // 3. 讀取 A 資料庫的「規格」欄位 (支援 Select / Multi-select / Rich text)
       let specs = ['預設規格'];
       const specProp = page.properties['規格'] || page.properties['Spec'];
       if (specProp) {
