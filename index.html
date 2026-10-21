@@ -1,143 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>預購下單表單</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      padding: 20px;
-      background: #f7f6f3;
-      color: #37352f;
-      margin: 0;
-    }
-    .card {
-      background: white;
-      padding: 24px;
-      border-radius: 12px;
-      max-width: 440px;
-      margin: 20px auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    h2 {
-      margin-top: 0;
-      font-size: 20px;
-      text-align: center;
-      color: #2eaadc;
-      margin-bottom: 20px;
-    }
-    label {
-      display: block;
-      margin: 14px 0 6px;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    input, select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      box-sizing: border-box;
-      font-size: 14px;
-      background: #fff;
-    }
-    input:focus, select:focus {
-      outline: none;
-      border-color: #2eaadc;
-    }
-    .contact-group {
-      display: flex;
-      gap: 8px;
-    }
-    .price-info {
-      background: #eef7fc;
-      padding: 12px;
-      border-radius: 6px;
-      margin: 18px 0;
-      font-size: 14px;
-      color: #0066cc;
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      background: #2eaadc;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #2589b2;
-    }
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    #msg {
-      margin-top: 14px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>🛍️ 線上下單預購表單</h2>
-    <form id="orderForm">
-      
-      <label>LINE社群暱稱</label>
-      <input type="text" id="nickname" required placeholder="例如：小明">
-
-      <label>聯絡方式</label>
-      <div class="contact-group">
-        <select id="contactType" style="width: 35%;">
-          <option value="LINE ID">LINE ID</option>
-          <option value="IG 帳號">IG 帳號</option>
-        </select>
-        <input type="text" id="contactInfo" required placeholder="請輸入 ID 或帳號" style="width: 65%;">
-      </div>
-
-      <label>選擇商品</label>
-      <select id="productSelect" required>
-        <option value="">載入商品中...</option>
-      </select>
-
-      <label>規格 / 款式</label>
-      <select id="specSelect" required>
-        <option value="預設規格">預設規格</option>
-        <option value="單品">單品</option>
-        <option value="組合包">組合包</option>
-      </select>
-
-      <label>數量</label>
-      <input type="number" id="quantity" value="1" min="1" required>
-
-      <label>取貨方式</label>
-      <select id="deliverySelect" required>
-        <option value="7-11 店到店">7-11 店到店</option>
-        <option value="面交">面交</option>
-      </select>
-
-      <div class="price-info">
-        <span>單價：\$<span id="unitPrice">0</span></span>
-        <span>總金額：\$<span id="totalPrice">0</span></span>
-      </div>
-
-      <button type="submit" id="btn">送出訂單</button>
-    </form>
-    <div id="msg"></div>
-  </div>
-
-  <script>
-    let productList = [];
+let productList = [];
 
     // 1. 從 A 資料庫讀取商品清單
     async function loadProducts() {
@@ -163,6 +24,34 @@
       }
     }
 
+    // 當選擇商品改變時，自動更新「規格選項」與「價格」
+    function onProductChange() {
+      const idx = document.getElementById('productSelect').value;
+      const specSelect = document.getElementById('specSelect');
+      
+      specSelect.innerHTML = ''; // 清空舊規格
+
+      if (idx !== "" && productList[idx]) {
+        const product = productList[idx];
+        
+        // 帶入該商品的規格
+        if (product.specs && product.specs.length > 0) {
+          product.specs.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            specSelect.appendChild(opt);
+          });
+        } else {
+          specSelect.innerHTML = '<option value="預設規格">預設規格</option>';
+        }
+      } else {
+        specSelect.innerHTML = '<option value="預設規格">預設規格</option>';
+      }
+      
+      updatePrice();
+    }
+
     // 2. 自動即時計算價格
     function updatePrice() {
       const idx = document.getElementById('productSelect').value;
@@ -178,22 +67,7 @@
       }
     }
 
-    document.getElementById('productSelect').addEventListener('change', updatePrice);
+    document.getElementById('productSelect').addEventListener('change', onProductChange);
     document.getElementById('quantity').addEventListener('input', updatePrice);
 
     loadProducts();
-
-    // 3. 提交表單寫入 B 資料庫
-    document.getElementById('orderForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('btn');
-      const msg = document.getElementById('msg');
-      const idx = document.getElementById('productSelect').value;
-      
-      if (idx === "") {
-        alert("請選擇商品！");
-        return;
-      }
-
-      const selectedProduct = productList[idx];
-      const qty = parseInt(document.getElementById('quantity').value);
