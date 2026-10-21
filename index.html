@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>預購下單</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f7f6f3; }
+    .card { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
+    label { display: block; margin: 10px 0 5px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    button { width: 100%; padding: 10px; background: #2eaadc; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🛍️ 預購商品下單</h2>
+    <form id="orderForm">
+      <label>LINE / 買家暱稱</label>
+      <input type="text" id="nickname" required placeholder="例如：cy">
+
+      <label>選擇預購商品（從 A 資料庫載入）</label>
+      <select id="productSelect" required>
+        <option value="">載入商品中...</option>
+      </select>
+
+      <label>數量</label>
+      <input type="number" id="quantity" value="1" min="1" required>
+
+      <button type="submit" id="btn">送出訂單</button>
+    </form>
+    <div id="msg" style="margin-top:10px; text-align:center;"></div>
+  </div>
+
+  <script>
+    // 1. 頁面載入時，自動去讀取 A 資料庫（商品資料庫）
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/get-products');
+        const products = await res.json();
+        const select = document.getElementById('productSelect');
+        select.innerHTML = '<option value="">請選擇商品...</option>';
+        products.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.name; // 或者用 p.id 當關聯
+          opt.textContent = `${p.name} ($${p.price || 0})`;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        document.getElementById('productSelect').innerHTML = '<option>商品載入失敗</option>';
+      }
+    }
+    loadProducts();
+
+    // 2. 表單送出，寫回 B 資料庫（訂單資料庫）
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn');
+      const msg = document.getElementById('msg');
+      btn.disabled = true;
+
+      const data = {
+        nickname: document.getElementById('nickname').value,
+        product: document.getElementById('productSelect').value,
+        quantity: document.getElementById('quantity').value
+      };
+
+      try {
+        const res = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          msg.style.color = 'green';
+          msg.innerText = '✅ 下單成功！已寫入訂單資料庫';
+          document.getElementById('orderForm').reset();
+        } else {
+          throw new Error('下單失敗');
+        }
+      } catch (err) {
+        msg.style.color = 'red';
+        msg.innerText = '❌ ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
