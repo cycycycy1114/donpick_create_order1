@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>預購下單表單</title>
+  <title>預購下單表單 - 除錯版</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       padding: 20px;
       background: #f7f6f3;
       color: #37352f;
@@ -42,10 +42,6 @@
       font-size: 14px;
       background: #fff;
     }
-    input:focus, select:focus {
-      outline: none;
-      border-color: #2eaadc;
-    }
     .contact-group {
       display: flex;
       gap: 8px;
@@ -71,20 +67,18 @@
       font-weight: bold;
       font-size: 16px;
       cursor: pointer;
-      transition: background 0.2s;
     }
-    button:hover {
-      background: #2589b2;
-    }
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    #msg {
-      margin-top: 14px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 14px;
+    button:hover { background: #2589b2; }
+    #debugBox {
+      background: #1e1e1e;
+      color: #0f0;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 6px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
   </style>
 </head>
@@ -134,18 +128,25 @@
       <button type="submit" id="btn">送出訂單</button>
     </form>
     <div id="msg"></div>
+
+    <!-- 用來即時顯示抓到的資料是否成功渲染 -->
+    <div id="debugBox">等待載入 API 資料中...</div>
   </div>
 
   <script>
     let productList = [];
+    const debugBox = document.getElementById('debugBox');
 
-    // 1. 載入商品資料
     async function loadProducts() {
       const select = document.getElementById('productSelect');
       try {
+        debugBox.innerText += "\n正在發送 fetch('/api/get-products')...";
         const res = await fetch('/api/get-products');
         productList = await res.json();
         
+        debugBox.innerText += `\n成功抓到 JSON，商品數量: ${productList.length}`;
+        debugBox.innerText += `\n內容: ${JSON.stringify(productList, null, 2)}`;
+
         if (!Array.isArray(productList) || productList.length === 0) {
           select.innerHTML = '<option value="">目前無商品可供選擇</option>';
           return;
@@ -158,23 +159,21 @@
           opt.textContent = `${p.name} ($${p.price})`;
           select.appendChild(opt);
         });
+        
+        debugBox.innerText += "\n👉 商品選單渲染完畢！";
       } catch (e) {
-        console.error("載入商品失敗:", e);
+        debugBox.innerText += `\n❌ 發生錯誤: ${e.message}`;
         select.innerHTML = '<option value="">商品載入失敗</option>';
       }
     }
 
-    // 2. 當選擇商品變更時，更新規格選單與單價
     function onProductChange() {
       const idx = document.getElementById('productSelect').value;
       const specSelect = document.getElementById('specSelect');
-      
       specSelect.innerHTML = '';
 
       if (idx !== "" && productList[idx]) {
         const product = productList[idx];
-        
-        // 帶入規格
         if (product.specs && product.specs.length > 0) {
           product.specs.forEach(s => {
             const opt = document.createElement('option');
@@ -184,3 +183,31 @@
           });
         } else {
           specSelect.innerHTML = '<option value="預設規格">預設規格</option>';
+        }
+      } else {
+        specSelect.innerHTML = '<option value="預設規格">預設規格</option>';
+      }
+      updatePrice();
+    }
+
+    function updatePrice() {
+      const idx = document.getElementById('productSelect').value;
+      const qty = parseInt(document.getElementById('quantity').value) || 1;
+      
+      if (idx !== "" && productList[idx]) {
+        const price = productList[idx].price || 0;
+        document.getElementById('unitPrice').innerText = price;
+        document.getElementById('totalPrice').innerText = price * qty;
+      } else {
+        document.getElementById('unitPrice').innerText = '0';
+        document.getElementById('totalPrice').innerText = '0';
+      }
+    }
+
+    document.getElementById('productSelect').addEventListener('change', onProductChange);
+    document.getElementById('quantity').addEventListener('input', updatePrice);
+
+    loadProducts();
+  </script>
+</body>
+</html>
