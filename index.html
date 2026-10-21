@@ -142,6 +142,8 @@
     // 1. 載入商品資料
     async function loadProducts() {
       const select = document.getElementById('productSelect');
+      if (!select) return;
+
       try {
         const res = await fetch('/api/get-products');
         productList = await res.json();
@@ -168,6 +170,7 @@
     function onProductChange() {
       const idx = document.getElementById('productSelect').value;
       const specSelect = document.getElementById('specSelect');
+      if (!specSelect) return;
       
       specSelect.innerHTML = '';
 
@@ -181,3 +184,72 @@
             opt.textContent = s;
             specSelect.appendChild(opt);
           });
+        } else {
+          specSelect.innerHTML = '<option value="預設規格">預設規格</option>';
+        }
+      } else {
+        specSelect.innerHTML = '<option value="預設規格">預設規格</option>';
+      }
+      
+      updatePrice();
+    }
+
+    // 3. 自動計算總金額
+    function updatePrice() {
+      const idx = document.getElementById('productSelect').value;
+      const qty = parseInt(document.getElementById('quantity').value) || 1;
+      
+      if (idx !== "" && productList[idx]) {
+        const price = productList[idx].price || 0;
+        document.getElementById('unitPrice').innerText = price;
+        document.getElementById('totalPrice').innerText = price * qty;
+      } else {
+        document.getElementById('unitPrice').innerText = '0';
+        document.getElementById('totalPrice').innerText = '0';
+      }
+    }
+
+    // 確保頁面 DOM 完全載入完成後才執行腳本
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById('productSelect').addEventListener('change', onProductChange);
+      document.getElementById('quantity').addEventListener('input', updatePrice);
+      loadProducts();
+    });
+
+    // 4. 表單提交寫入 Notion B 資料庫
+    document.getElementById('orderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn');
+      const msg = document.getElementById('msg');
+      const idx = document.getElementById('productSelect').value;
+      
+      if (idx === "") {
+        alert("請選擇商品！");
+        return;
+      }
+
+      const selectedProduct = productList[idx];
+      const qty = parseInt(document.getElementById('quantity').value) || 1;
+
+      btn.disabled = true;
+      msg.style.color = '#555';
+      msg.innerText = '⏳ 訂單傳送中，請稍候...';
+
+      const data = {
+        nickname: document.getElementById('nickname').value,
+        contactType: document.getElementById('contactType').value,
+        contactInfo: document.getElementById('contactInfo').value,
+        product: selectedProduct.name,
+        price: selectedProduct.price,
+        quantity: qty,
+        totalPrice: selectedProduct.price * qty,
+        spec: document.getElementById('specSelect').value,
+        delivery: document.getElementById('deliverySelect').value
+      };
+
+      try {
+        const res = await fetch('/api/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
