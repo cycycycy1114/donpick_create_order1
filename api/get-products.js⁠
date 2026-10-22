@@ -1,8 +1,6 @@
 import { Client } from '@notionhq/client';
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const DATABASE_ID = process.env.DATABASE_ID;
-const PRODUCT_DETAIL_DB_ID = process.env.PRODUCT_DETAIL_DB_ID;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -10,83 +8,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    let products = [];
-
-    // 1. 優先嘗試從 C 表 (款式細項表) 抓取資料
-    if (PRODUCT_DETAIL_DB_ID) {
-      try {
-        const cResponse = await notion.databases.query({
-          database_id: PRODUCT_DETAIL_DB_ID,
-        });
-
-        products = cResponse.results.map((page) => {
-          const p = page.properties;
-
-          const titleProp = p['款式名稱'] || p['名稱'] || p['Name'];
-          const styleName = titleProp?.title?.[0]?.plain_text || titleProp?.rich_text?.[0]?.plain_text || '標準款式';
-
-          const prodNameProp = p['商品名稱'] || p['商品'];
-          let productName = '未分類商品';
-          if (prodNameProp) {
-            if (prodNameProp.type === 'select') productName = prodNameProp.select?.name || '未分類商品';
-            else if (prodNameProp.type === 'rich_text') productName = prodNameProp.rich_text?.[0]?.plain_text || '未分類商品';
-            else if (prodNameProp.type === 'title') productName = prodNameProp.title?.[0]?.plain_text || '未分類商品';
-          }
-
-          const priceProp = p['單價'] || p['價格'] || p['Price'];
-          const price = priceProp?.number || 0;
-
-          const imageProp = p['款式圖片'] || p['圖片'] || p['Files'];
-          let imageUrl = '';
-          if (imageProp?.files?.[0]) {
-            const fileObj = imageProp.files[0];
-            imageUrl = fileObj.file?.url || fileObj.external?.url || '';
-          }
-
-          return {
-            id: page.id,
-            productName: productName,
-            styleName: styleName,
-            price: price,
-            imageUrl: imageUrl
-          };
-        });
-      } catch (err) {
-        console.error('C表讀取失敗:', err.message);
-      }
-    }
-
-    // 2. 如果 C 表沒有資料，自動備援回 A 表
-    if (products.length === 0 && DATABASE_ID) {
-      try {
-        const aResponse = await notion.databases.query({
-          database_id: DATABASE_ID,
-        });
-
-        products = aResponse.results.map((page) => {
-          const p = page.properties;
-          const nameProp = p['商品名稱'] || p['名稱'] || p['Name'];
-          const name = nameProp?.title?.[0]?.plain_text || nameProp?.rich_text?.[0]?.plain_text || '未命名商品';
-
-          const priceProp = p['單價'] || p['價格'] || p['Price'];
-          const price = priceProp?.number || 0;
-
-          return {
-            id: page.id,
-            productName: name,
-            styleName: '預設款式',
-            price: price,
-            imageUrl: ''
-          };
-        });
-      } catch (err) {
-        console.error('A表讀取失敗:', err.message);
-      }
-    }
-
-    return res.status(200).json({ success: true, products });
+    // 測試回傳基本訊息，確認 API 路由是否通暢
+    return res.status(200).json({ 
+      success: true, 
+      message: "API 運行正常！",
+      hasToken: !!process.env.NOTION_TOKEN,
+      hasDbId: !!process.env.DATABASE_ID
+    });
   } catch (error) {
-    console.error('Notion API 總錯誤:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }
