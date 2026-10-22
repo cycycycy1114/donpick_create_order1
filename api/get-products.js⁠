@@ -1,18 +1,18 @@
 import { Client } from '@notionhq/client';
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const DATABASE_ID = process.env.DATABASE_ID; // 原本的 A表/商品表
-const PRODUCT_DETAIL_DB_ID = process.env.PRODUCT_DETAIL_DB_ID; // 你的 C表/款式細項表
+const DATABASE_ID = process.env.DATABASE_ID;
+const PRODUCT_DETAIL_DB_ID = process.env.PRODUCT_DETAIL_DB_ID;
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
     let products = [];
 
-    // 1. 嘗試優先從 C 表 (款式細項表) 抓取資料
+    // 1. 優先嘗試從 C 表 (款式細項表) 抓取資料
     if (PRODUCT_DETAIL_DB_ID) {
       try {
         const cResponse = await notion.databases.query({
@@ -48,43 +48,45 @@ export default async function handler(req, res) {
             productName: productName,
             styleName: styleName,
             price: price,
-            imageUrl: imageUrl,
-            type: 'detail' // 標記為細項
+            imageUrl: imageUrl
           };
         });
       } catch (err) {
-        console.log('C表讀取失敗或尚未設定，自動轉為讀取A表', err.message);
+        console.error('C表讀取失敗:', err.message);
       }
     }
 
-    // 2. 如果 C 表沒有資料，自動回 A 表抓取基本商品
+    // 2. 如果 C 表沒有資料，自動備援回 A 表
     if (products.length === 0 && DATABASE_ID) {
-      const aResponse = await notion.databases.query({
-        database_id: DATABASE_ID,
-      });
+      try {
+        const aResponse = await notion.databases.query({
+          database_id: DATABASE_ID,
+        });
 
-      products = aResponse.results.map((page) => {
-        const p = page.properties;
-        const nameProp = p['商品名稱'] || p['名稱'] || p['Name'];
-        const name = nameProp?.title?.[0]?.plain_text || nameProp?.rich_text?.[0]?.plain_text || '未命名商品';
+        products = aResponse.results.map((page) => {
+          const p = page.properties;
+          const nameProp = p['商品名稱'] || p['名稱'] || p['Name'];
+          const name = nameProp?.title?.[0]?.plain_text || nameProp?.rich_text?.[0]?.plain_text || '未命名商品';
 
-        const priceProp = p['單價'] || p['價格'] || p['Price'];
-        const price = priceProp?.number || 0;
+          const priceProp = p['單價'] || p['價格'] || p['Price'];
+          const price = priceProp?.number || 0;
 
-        return {
-          id: page.id,
-          productName: name,
-          styleName: '預設款式',
-          price: price,
-          imageUrl: '',
-          type: 'main'
-        };
-      });
+          return {
+            id: page.id,
+            productName: name,
+            styleName: '預設款式',
+            price: price,
+            imageUrl: ''
+          };
+        });
+      } catch (err) {
+        console.error('A表讀取失敗:', err.message);
+      }
     }
 
     return res.status(200).json({ success: true, products });
   } catch (error) {
-    console.error('Notion API Error:', error);
+    console.error('Notion API 總錯誤:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }
