@@ -168,35 +168,28 @@
     let allProducts = [];
     let selectedStyle = null; // 記錄當前選中的款式物件
 
-    // 1. 載入後端 API 資料
-    async function loadProducts() {
-      const select = document.getElementById('productSelect');
-      try {
-        const res = await fetch('/api/get-products');
-        const data = await res.json();
-        
-        allProducts = data.products || data; // 相容新舊陣列格式
+async function loadProducts() {
+  const select = document.getElementById('productSelect');
+  try {
+    const res = await fetch('/api/get-products');
+    const text = await res.text(); // 先把回傳內容當作文字讀取
 
-        if (!Array.isArray(allProducts) || allProducts.length === 0) {
-          select.innerHTML = '<option value="">目前無商品可供選擇</option>';
-          return;
-        }
-
-        // 取出不重複的主商品名稱（不顯示金額）
-        const uniqueProductNames = [...new Set(allProducts.map(p => p.productName))];
-
-        select.innerHTML = '<option value="">請選擇商品...</option>';
-        uniqueProductNames.forEach(name => {
-          const opt = document.createElement('option');
-          opt.value = name;
-          opt.textContent = name; // 👈 這裡保持乾淨，不帶金額
-          select.appendChild(opt);
-        });
-      } catch (e) {
-        console.error("載入商品失敗:", e);
-        select.innerHTML = '<option value="">商品載入失敗</option>';
-      }
+    let data;
+    try {
+      data = JSON.parse(text); // 嘗試解析成 JSON
+    } catch (err) {
+      console.error("後端回傳的不是 JSON，內容是:", text);
+      select.innerHTML = '<option value="">伺服器回傳錯誤（請檢查 API）</option>';
+      return;
     }
+
+    allProducts = data.products || data;
+    // ...後續原本的選單渲染邏輯
+  } catch (e) {
+    console.error("載入商品失敗:", e);
+    select.innerHTML = '<option value="">商品載入失敗</option>';
+  }
+}
 
     // 2. 當選擇商品改變時，動態渲染該商品的「圖片 + 款式」卡片
     function onProductChange() {
